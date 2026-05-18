@@ -70,7 +70,13 @@ for thread_id in st.session_state['chat_threads']:
 # *****************************************************************************************
 
 
-config = { 'configurable': {'thread_id': st.session_state["thread_id"]} }
+config = { 'configurable': {'thread_id': st.session_state["thread_id"]} ,
+            'metadata': {
+                'thread_id': st.session_state['thread_id']
+            },
+            'run_name': 'chat_turn'
+         }
+
 user_input = st.chat_input("Type here")
 
 def stream_response():
