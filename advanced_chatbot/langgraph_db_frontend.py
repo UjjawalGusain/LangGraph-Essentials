@@ -1,6 +1,6 @@
 import streamlit as st
 from langgraph_db_backend import chatbot, retreive_all_threads
-from langchain.messages import HumanMessage
+from langchain.messages import HumanMessage, AIMessage
 import uuid
 
 # *****************************UTILITY FUNCTIONS******************************************
@@ -29,10 +29,6 @@ def load_conversation(thread_id):
         conversation_message.append({"role": "user" if type(message) is HumanMessage else "assistant", "content": message.content})
 
     st.session_state["message_history"] = conversation_message
-
-
-# ****************************************************************************************
-
 
 
 # *******************************SESSION SETUP********************************************
@@ -79,25 +75,8 @@ config = { 'configurable': {'thread_id': st.session_state["thread_id"]} ,
 
 user_input = st.chat_input("Type here")
 
-def stream_response():
-    for message_chunk, metadata in chatbot.stream(
-        {"messages": [HumanMessage(content=user_input)]},
-        config=config,
-        stream_mode="messages",
-    ):
-        content = message_chunk.content
 
-        # Normal text response
-        if isinstance(content, str) and content:
-            yield content
 
-        # Content can sometimes be a list of blocks
-        elif isinstance(content, list):
-            for block in content:
-                if isinstance(block, dict) and block.get("type") == "text":
-                    text = block.get("text", "")
-                    if text:
-                        yield text
 
 if user_input:
     st.session_state["message_history"].append({"role": "user", "content": user_input})
@@ -107,8 +86,28 @@ if user_input:
 
     
     with st.chat_message("assistant"):
-        
-        ai_message = st.write_stream(stream_response)
+        def stream_response():
+            for message_chunk, metadata in chatbot.stream(
+                {"messages": [HumanMessage(content=user_input)]},
+                config=config,
+                stream_mode="messages",
+            ):
+                content = message_chunk.content
+
+                if isinstance(message_chunk, AIMessage):
+                    if isinstance(content, str) and content:
+                        yield content
+
+                    # Content can sometimes be a list of blocks
+                    elif isinstance(content, list):
+                        for block in content:
+                            if isinstance(block, dict) and block.get("type") == "text":
+                                text = block.get("text", "")
+                                if text:
+                                    yield text
+
+
+        ai_message = st.write_stream(stream_response())
 
     st.session_state["message_history"].append({"role": "assistant", "content": ai_message})
 
